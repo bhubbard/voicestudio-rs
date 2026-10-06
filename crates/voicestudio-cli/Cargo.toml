@@ -1,0 +1,21 @@
+[package]
+name = "voicestudio-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "High-performance CLI for VoiceStudio: voice cloning, speech synthesis, dubbing, and transcription"
+
+[[bin]]
+name = "voicestudio"
+path = "src/main.rs"
+
+[dependencies]
+voicestudio-core = { path = "../voicestudio-core" }
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+colored.workspace = true
+anyhow.workspace = true
+indicatif.workspace = true
+hound.workspace = true

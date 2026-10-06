@@ -1,0 +1,19 @@
+[package]
+name = "voicestudio-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Core engine for VoiceStudio: voice cloning, multi-engine speech synthesis, video dubbing, and audio DSP"
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+colored.workspace = true
+hound.workspace = true
+regex.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

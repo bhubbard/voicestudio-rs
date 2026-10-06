@@ -1,0 +1,30 @@
+[workspace]
+members = [
+    "crates/voicestudio-core",
+    "crates/voicestudio-cli",
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["VoiceStudio Contributors", "Brandon Hubbard <bhubbard@users.noreply.github.com>"]
+license = "GPL-3.0-or-later"
+repository = "https://github.com/bhubbard/voicestudio-rs"
+homepage = "https://github.com/bhubbard/voicestudio-rs"
+documentation = "https://github.com/bhubbard/voicestudio-rs#readme"
+readme = "README.md"
+keywords = ["voicestudio", "voice-cloning", "tts", "dubbing", "elevenlabs"]
+categories = ["multimedia::audio", "command-line-utilities"]
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+clap = { version = "4.5", features = ["derive", "env"] }
+anyhow = "1.0"
+thiserror = "1.0"
+colored = "2.1"
+hound = "3.5"
+tempfile = "3.12"
+indicatif = "0.17"
+regex = "1.10"
