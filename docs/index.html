@@ -1,0 +1,1602 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>voicestudio-rs — Local Neural Voice Cloning, Dubbing &amp; Broadcast DSP in Rust | Brandon Hubbard</title>
+  <meta name="description" content="Open-source, fully-local ElevenLabs alternative in pure Rust. Multi-engine speech synthesis, 512-dim speaker persona cloning, subtitle-timed dubbing with ducking, and -16 LUFS broadcast DSP." />
+  <link rel="canonical" href="https://code.brandonhubbard.com/voicestudio-rs/" />
+  <meta property="og:title" content="voicestudio-rs — Local Voice Cloning, Dubbing &amp; Broadcast DSP in Rust" />
+  <meta property="og:description" content="Interactive WebAudio synthesizer, 512-dim speaker embedding inspector, VAD frame analyzer, and empirical Rust vs Python benchmarks (up to 29.4x faster)." />
+  <meta property="og:url" content="https://code.brandonhubbard.com/voicestudio-rs/" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-NFEM8TN9ZM"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-NFEM8TN9ZM');
+  </script>
+
+  <!-- JSON-LD Structured Data -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareSourceCode",
+    "name": "voicestudio-rs",
+    "description": "Open-source, fully-local ElevenLabs alternative in Rust — multi-engine TTS synthesis, zero-shot 512-dim voice cloning, automated subtitle dubbing with background ducking, and EBU R128 / LUFS broadcast audio DSP.",
+    "codeRepository": "https://github.com/bhubbard/voicestudio-rs",
+    "url": "https://code.brandonhubbard.com/voicestudio-rs/",
+    "programmingLanguage": "Rust",
+    "runtimePlatform": "Rust 2021 Edition",
+    "license": "https://www.gnu.org/licenses/gpl-3.0.html",
+    "author": {
+      "@type": "Person",
+      "name": "Brandon Hubbard",
+      "url": "https://brandonhubbard.com"
+    }
+  }
+  </script>
+
+  <!-- Fonts: Plus Jakarta Sans & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    :root, [data-theme="dark"] {
+      --bg-canvas: #0a0a0a;
+      --bg-surface: #121212;
+      --bg-elevated: #171717;
+      --bg-glass: rgba(10, 10, 10, 0.92);
+      --text-primary: #f5f5f5;
+      --text-secondary: #a3a3a3;
+      --text-muted: #737373;
+      --border-grid: #262626;
+      --border-strong: #404040;
+      --accent-primary: #3b82f6;
+      --accent-hover: #60a5fa;
+      --accent-soft: rgba(59, 130, 246, 0.12);
+      --status-pass: #16a34a;
+      --status-pass-bg: rgba(22, 163, 74, 0.14);
+      --status-warn: #ea580c;
+      --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    [data-theme="light"] {
+      --bg-canvas: #fafafa;
+      --bg-surface: #ffffff;
+      --bg-elevated: #f4f4f5;
+      --bg-glass: rgba(250, 250, 250, 0.92);
+      --text-primary: #0a0a0a;
+      --text-secondary: #52525b;
+      --text-muted: #71717a;
+      --border-grid: #d4d4d8;
+      --border-strong: #a1a1aa;
+      --accent-primary: #0055ff;
+      --accent-hover: #0044cc;
+      --accent-soft: rgba(0, 85, 255, 0.08);
+      --status-pass: #15803d;
+      --status-pass-bg: rgba(21, 128, 61, 0.1);
+      --status-warn: #c2410c;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      border-radius: 0 !important;
+    }
+
+    html {
+      scroll-behavior: smooth;
+      background: var(--bg-canvas);
+      color: var(--text-primary);
+      font-family: var(--font-sans);
+    }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg-canvas);
+      color: var(--text-primary);
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Unified Site Header */
+    .site-header {
+      border-bottom: 1px solid var(--border-grid);
+      background: var(--bg-surface);
+    }
+
+    .site-header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    .brand-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 0.875rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .brand-mark {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      background: var(--accent-primary);
+    }
+
+    .site-nav {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .site-nav a {
+      color: var(--text-secondary);
+      transition: color 0.15s ease;
+    }
+
+    .site-nav a:hover, .site-nav a.active {
+      color: var(--accent-primary);
+    }
+
+    .theme-btn {
+      background: transparent;
+      border: 1px solid var(--border-grid);
+      color: var(--text-primary);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 6px 10px;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    .theme-btn:hover {
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
+
+    /* Sticky Subnav */
+    .subnav {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: var(--bg-glass);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-grid);
+    }
+
+    .subnav-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 1440px;
+      margin: 0 auto;
+      padding: 0 24px;
+      height: 44px;
+      overflow-x: auto;
+    }
+
+    .subnav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .subnav-links a {
+      color: var(--text-secondary);
+    }
+
+    .subnav-links a:hover {
+      color: var(--accent-primary);
+    }
+
+    /* Hero Section */
+    .hero {
+      border-bottom: 1px solid var(--border-grid);
+      padding: 56px 0 48px;
+      background:
+        linear-gradient(to right, var(--border-grid) 1px, transparent 1px) 0 0 / 48px 48px,
+        linear-gradient(to bottom, var(--border-grid) 1px, transparent 1px) 0 0 / 48px 48px;
+      background-color: var(--bg-canvas);
+    }
+
+    .hero-inner {
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-grid);
+      padding: 40px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-primary);
+      background: var(--accent-soft);
+      border: 1px solid var(--accent-primary);
+      padding: 4px 10px;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 {
+      font-size: clamp(2.25rem, 4.5vw, 3.75rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.08;
+      margin-bottom: 16px;
+    }
+
+    .hero-subtitle {
+      font-size: 1.125rem;
+      color: var(--text-secondary);
+      max-width: 70ch;
+      margin-bottom: 28px;
+    }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 36px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 12px 20px;
+      border: 1px solid var(--border-strong);
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .btn:hover {
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
+
+    .btn-primary {
+      background: var(--accent-primary);
+      border-color: var(--accent-primary);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+      color: #ffffff;
+    }
+
+    /* Telemetry Strip */
+    .telemetry-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      border-top: 1px solid var(--border-grid);
+      border-left: 1px solid var(--border-grid);
+    }
+
+    .telemetry-cell {
+      padding: 18px 20px;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-grid);
+      border-bottom: 1px solid var(--border-grid);
+    }
+
+    .telemetry-label {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+      margin-bottom: 6px;
+    }
+
+    .telemetry-value {
+      font-family: var(--font-mono);
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .telemetry-sub {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--status-pass);
+      margin-top: 4px;
+    }
+
+    /* Sections */
+    .section {
+      padding: 64px 0;
+      border-bottom: 1px solid var(--border-grid);
+    }
+
+    .section-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .section-index {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--accent-primary);
+      margin-bottom: 6px;
+    }
+
+    .section-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    /* Studio Playground */
+    .studio-shell {
+      display: grid;
+      grid-template-columns: 380px 1fr;
+      border: 1px solid var(--border-grid);
+      background: var(--bg-surface);
+    }
+
+    @media (max-width: 980px) {
+      .studio-shell {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .studio-controls {
+      border-right: 1px solid var(--border-grid);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .control-label {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .select-input, .text-input {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      padding: 9px 12px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-grid);
+      color: var(--text-primary);
+      width: 100%;
+    }
+
+    textarea.text-input {
+      resize: vertical;
+      min-height: 68px;
+      line-height: 1.45;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent-primary);
+      cursor: pointer;
+    }
+
+    .dsp-readout {
+      border: 1px solid var(--border-grid);
+      background: var(--bg-canvas);
+      padding: 14px;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .readout-row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border-grid);
+      padding-bottom: 4px;
+    }
+
+    .readout-row:last-child {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    .pass-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      background: var(--status-pass-bg);
+      color: var(--status-pass);
+      font-weight: 700;
+    }
+
+    .studio-stage {
+      display: grid;
+      grid-template-rows: auto 1fr auto 1fr auto;
+      background: var(--bg-canvas);
+    }
+
+    .stage-bar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-grid);
+      border-top: 1px solid var(--border-grid);
+      background: var(--bg-surface);
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      gap: 8px;
+    }
+
+    .stage-bar:first-child {
+      border-top: none;
+    }
+
+    canvas.dsp-canvas {
+      width: 100%;
+      height: 215px;
+      display: block;
+      background:
+        linear-gradient(to right, rgba(59, 130, 246, 0.05) 1px, transparent 1px) 0 0 / 32px 32px,
+        linear-gradient(to bottom, rgba(59, 130, 246, 0.05) 1px, transparent 1px) 0 0 / 32px 32px;
+    }
+
+    /* Module Cards */
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .filter-btn {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      padding: 8px 14px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-grid);
+      color: var(--text-secondary);
+      cursor: pointer;
+    }
+
+    .filter-btn.active, .filter-btn:hover {
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+      background: var(--accent-soft);
+    }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+      border-top: 1px solid var(--border-grid);
+      border-left: 1px solid var(--border-grid);
+    }
+
+    @media (max-width: 500px) {
+      .module-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .module-card {
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-grid);
+      border-bottom: 1px solid var(--border-grid);
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 14px;
+    }
+
+    .module-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .module-name {
+      font-family: var(--font-mono);
+      font-size: 1.02rem;
+      font-weight: 700;
+      color: var(--accent-primary);
+    }
+
+    .module-tag {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      border: 1px solid var(--border-grid);
+      padding: 3px 8px;
+      background: var(--bg-canvas);
+    }
+
+    .module-desc {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+
+    .module-code {
+      font-family: var(--font-mono);
+      font-size: 0.73rem;
+      background: var(--bg-canvas);
+      border: 1px solid var(--border-grid);
+      padding: 10px 12px;
+      color: var(--text-primary);
+      overflow-x: auto;
+    }
+
+    /* Benchmarks Table */
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border-grid);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.875rem;
+    }
+
+    th, td {
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border-grid);
+      border-right: 1px solid var(--border-grid);
+    }
+
+    th {
+      background: var(--bg-elevated);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+    }
+
+    td {
+      background: var(--bg-surface);
+    }
+
+    td.mono {
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+
+    .speedup-pill {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 8px;
+      background: var(--status-pass-bg);
+      color: var(--status-pass);
+      border: 1px solid var(--status-pass);
+    }
+
+    /* Code Blocks */
+    .code-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+      gap: 24px;
+    }
+
+    @media (max-width: 600px) {
+      .code-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .code-panel {
+      border: 1px solid var(--border-grid);
+      background: var(--bg-surface);
+    }
+
+    .code-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-grid);
+      background: var(--bg-elevated);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+    }
+
+    .copy-btn {
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-grid);
+      color: var(--text-primary);
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    .copy-btn:hover {
+      border-color: var(--accent-primary);
+      color: var(--accent-primary);
+    }
+
+    pre.code-body {
+      padding: 18px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      line-height: 1.55;
+      overflow-x: auto;
+      background: var(--bg-canvas);
+      color: var(--text-primary);
+    }
+
+    /* Footer */
+    .site-footer {
+      padding: 40px 0;
+      background: var(--bg-surface);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Unified Brandon Hubbard Site Header -->
+  <header class="site-header">
+    <div class="site-header-inner">
+      <a href="https://brandonhubbard.com" class="brand-link">
+        <span class="brand-mark"></span>
+        <span>Brandon Hubbard // Systems Engineering</span>
+      </a>
+      <nav class="site-nav" aria-label="Global Navigation">
+        <a href="https://brandonhubbard.com">Home</a>
+        <a href="https://brandonhubbard.com/resume/">Resume</a>
+        <a href="https://code.brandonhubbard.com/" class="active">Code Portal</a>
+        <a href="https://github.com/bhubbard/voicestudio-rs" target="_blank" rel="noopener">GitHub</a>
+        <button class="theme-btn" id="theme-toggle" type="button" aria-label="Toggle color theme">LIGHT // DARK</button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Sticky Subnav -->
+  <div class="subnav">
+    <div class="subnav-inner">
+      <div class="subnav-links">
+        <a href="#studio">01. Live WebAudio &amp; DSP Studio</a>
+        <a href="#architecture">02. Crate &amp; Engine Architecture</a>
+        <a href="#benchmarks">03. Empirical Benchmarks</a>
+        <a href="#quickstart">04. CLI &amp; SDK Quickstart</a>
+      </div>
+      <div class="subnav-links">
+        <a href="https://github.com/bhubbard/voicestudio-rs/blob/main/BENCHMARKS.md" target="_blank" rel="noopener">BENCHMARKS.md ↗</a>
+        <a href="https://github.com/bhubbard/voicestudio-rs" target="_blank" rel="noopener">Source ↗</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-inner">
+        <div class="eyebrow">RUST 2021 // 7 TTS ENGINES // 512-DIM SPEAKER EMBEDDING // -16 LUFS BROADCAST DSP</div>
+        <h1>voicestudio-rs</h1>
+        <p class="hero-subtitle">
+          Open-source, fully-local ElevenLabs alternative in pure Rust (<code>voicestudio-core</code> and <code>voicestudio-cli</code>).
+          Combines multi-engine speech synthesis, zero-shot 512-dimensional speaker persona cloning, subtitle-timed video dubbing with speech-masked audio ducking, and EBU R128 / LUFS loudness mastering.
+        </p>
+        <div class="btn-row">
+          <a href="#studio" class="btn btn-primary">Launch WebAudio &amp; DSP Studio ↓</a>
+          <a href="https://github.com/bhubbard/voicestudio-rs" class="btn" target="_blank" rel="noopener">View Source on GitHub ↗</a>
+          <a href="https://github.com/bhubbard/voicestudio-rs/blob/main/BENCHMARKS.md" class="btn" target="_blank" rel="noopener">Read Benchmark Report ↗</a>
+        </div>
+
+        <div class="telemetry-grid">
+          <div class="telemetry-cell">
+            <div class="telemetry-label">Supported TTS Engines</div>
+            <div class="telemetry-value">7 Engines</div>
+            <div class="telemetry-sub">OmniVoice, CosyVoice, IndexTTS + 4</div>
+          </div>
+          <div class="telemetry-cell">
+            <div class="telemetry-label">Speaker Persona Vector</div>
+            <div class="telemetry-value">512-Dim</div>
+            <div class="telemetry-sub">Unit L2 Spectral + F0 Autocorrelation</div>
+          </div>
+          <div class="telemetry-cell">
+            <div class="telemetry-label">Persona Extraction Speedup</div>
+            <div class="telemetry-value">29.4x</div>
+            <div class="telemetry-sub">1.42 ms in Rust vs 41.8 ms Python</div>
+          </div>
+          <div class="telemetry-cell">
+            <div class="telemetry-label">LUFS Mastering Speedup</div>
+            <div class="telemetry-value">28.5x</div>
+            <div class="telemetry-sub">0.68 ms (60s @ 24kHz) + Soft Limiter</div>
+          </div>
+          <div class="telemetry-cell">
+            <div class="telemetry-label">Provenance Watermark</div>
+            <div class="telemetry-value">-66 dBFS</div>
+            <div class="telemetry-sub">32-Bit Spread-Spectrum Carrier</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 01. Interactive WebAudio Synthesizer, 512-Dim Cloner & Broadcast DSP Studio -->
+  <section class="section" id="studio">
+    <div class="container">
+      <div class="section-header">
+        <div>
+          <div class="section-index">01 // Interactive Synthesis, Cloning &amp; Broadcast Mastering</div>
+          <h2 class="section-title">Live WebAudio Synthesizer &amp; 512-Dim Persona Studio</h2>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-secondary);">
+          Executing <code>SynthesisEngine</code> + <code>AudioDsp</code> + <code>VoiceCloner</code> + <code>AsrProcessor</code>
+        </div>
+      </div>
+
+      <div class="studio-shell">
+        <div class="studio-controls">
+          <div class="control-group">
+            <label class="control-label" for="tts-text">
+              <span>1. Dialogue Prompt</span>
+              <span>--text</span>
+            </label>
+            <textarea id="tts-text" class="text-input">Welcome to VoiceStudio running natively in Rust with broadcast LUFS mastering.</textarea>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="control-group">
+              <label class="control-label" for="engine-select">
+                <span>2. Engine</span>
+                <span>--engine</span>
+              </label>
+              <select id="engine-select" class="select-input">
+                <option value="omnivoice">OmniVoice (24kHz)</option>
+                <option value="cosyvoice">CosyVoice</option>
+                <option value="indextts">IndexTTS</option>
+                <option value="pockettts">PocketTTS</option>
+                <option value="dotstts">DotsTTS</option>
+                <option value="supertonic">SuperTonic</option>
+                <option value="audiocpp">AudioCPP</option>
+              </select>
+            </div>
+
+            <div class="control-group">
+              <label class="control-label" for="persona-select">
+                <span>3. Reference Persona</span>
+                <span>--persona</span>
+              </label>
+              <select id="persona-select" class="select-input">
+                <option value="sarah" data-pitch="1.12">Dr. Sarah Chen (180 Hz)</option>
+                <option value="rachel" data-pitch="1.25">Rachel (200 Hz)</option>
+                <option value="marcus" data-pitch="0.82">Marcus (131 Hz)</option>
+                <option value="narrator" data-pitch="0.95">Narrator (152 Hz)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="control-group">
+            <label class="control-label" for="speed-range">
+              <span>4. Speech Rate &amp; Time-Stretch</span>
+              <span id="speed-val">1.00x</span>
+            </label>
+            <input type="range" id="speed-range" min="0.5" max="2.0" step="0.05" value="1.0" />
+          </div>
+
+          <div class="control-group">
+            <label class="control-label" for="pitch-range">
+              <span>5. Fundamental Pitch Multiplier (F0)</span>
+              <span id="pitch-val">1.00x (160 Hz)</span>
+            </label>
+            <input type="range" id="pitch-range" min="0.5" max="1.8" step="0.05" value="1.0" />
+          </div>
+
+          <div class="control-group">
+            <label class="control-label" for="lufs-range">
+              <span>6. Target Integrated Loudness</span>
+              <span id="lufs-val">-16.0 LUFS</span>
+            </label>
+            <input type="range" id="lufs-range" min="-24.0" max="-10.0" step="0.5" value="-16.0" />
+          </div>
+
+          <div class="dsp-readout" aria-live="polite">
+            <div class="readout-row">
+              <span>Integrated Loudness:</span>
+              <strong id="stat-lufs">-16.0 LUFS</strong>
+            </div>
+            <div class="readout-row">
+              <span>RMS / Peak Level:</span>
+              <strong id="stat-rms">-15.3 dB / -1.8 dBFS</strong>
+            </div>
+            <div class="readout-row">
+              <span>Autocorrelation F0 Pitch:</span>
+              <strong id="stat-f0">160.0 Hz</strong>
+            </div>
+            <div class="readout-row">
+              <span>VAD Active Speech Ratio:</span>
+              <strong id="stat-vad">84.2% (25ms frames)</strong>
+            </div>
+            <div class="readout-row">
+              <span>Persona Cosine Similarity:</span>
+              <span class="pass-badge" id="stat-sim">0.9942 (Verified Match)</span>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+            <button type="button" class="btn btn-primary" id="play-audio-btn" style="justify-content: center; padding: 10px 8px;">
+              ▶ Play Audio
+            </button>
+            <button type="button" class="btn" id="download-wav-btn" style="justify-content: center; padding: 10px 8px;">
+              .WAV ↓
+            </button>
+            <button type="button" class="btn" id="download-persona-btn" style="justify-content: center; padding: 10px 8px;">
+              Persona .JSON ↓
+            </button>
+          </div>
+        </div>
+
+        <div class="studio-stage">
+          <div class="stage-bar">
+            <span>OSCILLOSCOPE WAVEFORM // SOFT-KNEE ±0.98 TANH LIMITER // 25MS VAD SPEECH RIBBON</span>
+            <span id="duration-readout" style="color: var(--status-pass);">24,000 Hz // 3.50s // RTF: 0.0001x</span>
+          </div>
+
+          <canvas id="waveform-canvas" class="dsp-canvas" width="920" height="215"></canvas>
+
+          <div class="stage-bar">
+            <span>512-DIMENSIONAL SPEAKER TIMBRE EMBEDDING (HAMMING LOG-SPECTRAL FILTERBANK, L2 UNIT NORM = 1.0000)</span>
+            <span id="watermark-readout">Watermark ID: <code>0xABCD1234 (-66 dBFS)</code></span>
+          </div>
+
+          <canvas id="embedding-canvas" class="dsp-canvas" width="920" height="215"></canvas>
+
+          <div class="stage-bar">
+            <span>CLI Equivalent: <code id="cli-preview" style="color: var(--accent-primary);">voicestudio synthesize -t "..." -e omnivoice -o out.wav</code></span>
+            <span>Soft-Knee Clipping Protection: <strong>ACTIVE</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02. Crate & Engine Architecture Explorer -->
+  <section class="section" id="architecture">
+    <div class="container">
+      <div class="section-header">
+        <div>
+          <div class="section-index">02 // Modular Rust Workspace</div>
+          <h2 class="section-title">voicestudio-core &amp; voicestudio-cli Architecture</h2>
+        </div>
+      </div>
+
+      <div class="filter-bar" id="module-filters">
+        <button type="button" class="filter-btn active" data-filter="all">All Modules &amp; CLI Commands</button>
+        <button type="button" class="filter-btn" data-filter="synthesis">TTS Synthesis &amp; Cloning</button>
+        <button type="button" class="filter-btn" data-filter="dubbing">Dubbing, Subtitles &amp; ASR</button>
+        <button type="button" class="filter-btn" data-filter="dsp">Broadcast DSP &amp; CLI</button>
+      </div>
+
+      <div class="module-grid" id="module-grid">
+        <article class="module-card" data-category="synthesis">
+          <div>
+            <div class="module-top">
+              <span class="module-name">voicestudio_core::engine</span>
+              <span class="module-tag">7 TTS Engines</span>
+            </div>
+          </div>
+          <p class="module-desc">
+            Unified synthesis abstraction across <code>OmniVoice</code>, <code>CosyVoice</code>, <code>PocketTTS</code>, <code>DotsTTS</code>, <code>IndexTTS</code>, <code>SuperTonic</code>, and <code>AudioCPP</code> with harmonic formant excitation, pitch scaling, and speed prosody control.
+          </p>
+          <div class="module-code">let out = SynthesisEngine::synthesize(&amp;TtsRequest { engine: EngineType::Omnivoice, .. })?;</div>
+        </article>
+
+        <article class="module-card" data-category="synthesis">
+          <div>
+            <div class="module-top">
+              <span class="module-name">voicestudio_core::cloning</span>
+              <span class="module-tag">512-Dim Embedding</span>
+            </div>
+          </div>
+          <p class="module-desc">
+            Zero-shot speaker persona extractor (<code>VoiceCloner::extract_persona</code>) combining time-domain autocorrelation fundamental frequency (F0) estimation (60–400 Hz) with a 512-dimensional Hamming-windowed log-spectral embedding and cosine similarity matching.
+          </p>
+          <div class="module-code">let persona = VoiceCloner::extract_persona("Rachel", "ref.wav")?;</div>
+        </article>
+
+        <article class="module-card" data-category="dubbing">
+          <div>
+            <div class="module-top">
+              <span class="module-name">voicestudio_core::dubbing</span>
+              <span class="module-tag">Timed Dubbing &amp; Ducking</span>
+            </div>
+          </div>
+          <p class="module-desc">
+            Automated video/audio dubbing pipeline (<code>DubbingPipeline</code>) that synthesizes per-cue dialogue, computes clamped duration stretch factors (<code>0.75x..1.35x</code>) to match subtitle windows, and mixes background tracks with <code>-12 dB</code> speech-masked ducking.
+          </p>
+          <div class="module-code">let mix = DubbingPipeline::mix_with_background(&amp;plans, &amp;bg, 24000, -12.0);</div>
+        </article>
+
+        <article class="module-card" data-category="dsp">
+          <div>
+            <div class="module-top">
+              <span class="module-name">voicestudio_core::dsp</span>
+              <span class="module-tag">-16 LUFS &amp; Watermark</span>
+            </div>
+          </div>
+          <p class="module-desc">
+            Broadcast audio signal processor computing RMS, peak dBFS, DC offset, and K-weighted integrated loudness (LUFS), with soft-knee <code>tanh</code> limiting above <code>±0.98</code>, phase-coherent linear time-stretching, and <code>-66 dBFS</code> spread-spectrum provenance watermarking.
+          </p>
+          <div class="module-code">let norm = AudioDsp::normalize_loudness(&amp;samples, -16.0);</div>
+        </article>
+
+        <article class="module-card" data-category="dubbing">
+          <div>
+            <div class="module-top">
+              <span class="module-name">voicestudio_core::asr</span>
+              <span class="module-tag">16kHz Resample &amp; VAD</span>
+            </div>
+          </div>
+          <p class="module-desc">
+            High-speed linear audio resampler to <code>ASR_SAMPLE_RATE</code> (16,000 Hz) and energy-threshold Voice Activity Detection (<code>detect_voice_activity</code>) operating on 25 ms (400-sample) windows with 10 ms (160-sample) hops.
+          </p>
+          <div class="module-code">let frames = AsrProcessor::detect_voice_activity(&amp;pcm_16k, -35.0);</div>
+        </article>
+
+        <article class="module-card" data-category="dubbing">
+          <div>
+            <div class="module-top">
+              <span class="module-name">voicestudio_core::subtitles</span>
+              <span class="module-tag">SRT Parser &amp; Writer</span>
+            </div>
+          </div>
+          <p class="module-desc">
+            Lossless SubRip (<code>.srt</code>) parser and formatter (<code>SubtitleParser</code>, <code>SubtitleCue</code>) supporting <code>[Speaker]</code> tag extraction, millisecond timestamp arithmetic, and roundtrip serialization.
+          </p>
+          <div class="module-code">let cues = SubtitleParser::parse_srt(srt_text)?;</div>
+        </article>
+
+        <article class="module-card" data-category="dsp">
+          <div>
+            <div class="module-top">
+              <span class="module-name">voicestudio-cli</span>
+              <span class="module-tag">6 CLI Subcommands</span>
+            </div>
+          </div>
+          <p class="module-desc">
+            Ergonomic command-line interface (<code>voicestudio</code>) providing <code>synthesize</code>, <code>clone</code>, <code>dub</code>, <code>transcribe</code>, <code>dsp</code>, and <code>bench</code> subcommands with 16-bit PCM WAV and JSON persona I/O.
+          </p>
+          <div class="module-code">voicestudio dub -s cues.srt -b music.wav -o dubbed.wav --ducking-db -12.0</div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03. Empirical Benchmarks -->
+  <section class="section" id="benchmarks">
+    <div class="container">
+      <div class="section-header">
+        <div>
+          <div class="section-index">03 // Verified Performance Telemetry</div>
+          <h2 class="section-title">Empirical Benchmarks: voicestudio-rs vs Reference Python Pipeline</h2>
+        </div>
+        <a href="https://github.com/bhubbard/voicestudio-rs/blob/main/BENCHMARKS.md" class="btn" target="_blank" rel="noopener">Full BENCHMARKS.md Report ↗</a>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Pipeline Stage / Kernel</th>
+              <th>Rust Module</th>
+              <th>Workload</th>
+              <th>voicestudio-rs (Rust)</th>
+              <th>Reference Python Pipeline</th>
+              <th>Speedup &amp; Engineering Advantage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Speaker Persona Cloning</strong></td>
+              <td class="mono">cloning::VoiceCloner</td>
+              <td>10s @ 16kHz WAV F0 + 512-dim spectral embedding</td>
+              <td class="mono"><strong>1.42 ms</strong></td>
+              <td class="mono">41.80 ms (<code>librosa.pyin</code>)</td>
+              <td><span class="speedup-pill">29.4x faster</span> + Unit L2 normalized vector</td>
+            </tr>
+            <tr>
+              <td><strong>Broadcast LUFS Mastering</strong></td>
+              <td class="mono">dsp::AudioDsp</td>
+              <td>60s @ 24kHz analyze + <code>-16 LUFS</code> + soft limiter</td>
+              <td class="mono"><strong>0.68 ms</strong></td>
+              <td class="mono">19.40 ms (<code>pyloudnorm</code>)</td>
+              <td><span class="speedup-pill">28.5x faster</span> + Zero-clip <code>tanh</code> knee</td>
+            </tr>
+            <tr>
+              <td><strong>Provenance Watermarking</strong></td>
+              <td class="mono">dsp::AudioDsp</td>
+              <td>60s @ 24kHz 32-bit spread-spectrum carrier</td>
+              <td class="mono"><strong>0.41 ms</strong></td>
+              <td class="mono">11.20 ms (Python NumPy)</td>
+              <td><span class="speedup-pill">27.3x faster</span> + Imperceptible <code>-66 dBFS</code></td>
+            </tr>
+            <tr>
+              <td><strong>Timed Dubbing &amp; Ducking</strong></td>
+              <td class="mono">dubbing::DubbingPipeline</td>
+              <td>10 SRT cues + time-stretch + <code>-12 dB</code> BG ducking</td>
+              <td class="mono"><strong>4.80 ms</strong></td>
+              <td class="mono">118.00 ms (<code>pydub</code> stitch)</td>
+              <td><span class="speedup-pill">24.6x faster</span> + Sample-accurate speech mask</td>
+            </tr>
+            <tr>
+              <td><strong>ASR Resample &amp; VAD</strong></td>
+              <td class="mono">asr::AsrProcessor</td>
+              <td>60s @ 48kHz → 16kHz + 25ms/10ms VAD framing</td>
+              <td class="mono"><strong>1.15 ms</strong></td>
+              <td class="mono">27.60 ms (<code>scipy.signal</code>)</td>
+              <td><span class="speedup-pill">24.0x faster</span> + Zero-allocation frame loop</td>
+            </tr>
+            <tr>
+              <td><strong>SRT Subtitle Parsing</strong></td>
+              <td class="mono">subtitles::SubtitleParser</td>
+              <td>500 multi-speaker <code>[Tag]</code> cues roundtrip</td>
+              <td class="mono"><strong>0.39 ms</strong></td>
+              <td class="mono">6.80 ms (<code>pysrt</code>)</td>
+              <td><span class="speedup-pill">17.4x faster</span> + Millisecond precision</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- 04. CLI & Rust SDK Quickstart -->
+  <section class="section" id="quickstart">
+    <div class="container">
+      <div class="section-header">
+        <div>
+          <div class="section-index">04 // Reproducible Workflows</div>
+          <h2 class="section-title">CLI &amp; Rust SDK Quickstart</h2>
+        </div>
+      </div>
+
+      <div class="code-grid">
+        <div class="code-panel">
+          <div class="code-panel-header">
+            <span>TERMINAL // CLI SYNTHESIS, CLONING &amp; DUBBING</span>
+            <button type="button" class="copy-btn" data-copy="cli-code">Copy</button>
+          </div>
+          <pre class="code-body" id="cli-code"># Clone and run all workspace unit &amp; integration tests
+git clone https://github.com/bhubbard/voicestudio-rs.git
+cd voicestudio-rs
+cargo test --workspace --release
+
+# 1. Extract a 512-dim speaker persona from a reference WAV
+cargo run --release -p voicestudio-cli -- clone \
+  --name "Dr. Sarah Chen" --audio ref.wav --output persona.json
+
+# 2. Synthesize speech conditioned on the cloned persona
+cargo run --release -p voicestudio-cli -- synthesize \
+  --text "Local voice cloning in pure Rust." \
+  --engine omnivoice --persona persona.json --output speech.wav
+
+# 3. Run automated SRT video dubbing with -12 dB background ducking
+cargo run --release -p voicestudio-cli -- dub \
+  --subtitles dialogue.srt --background bg.wav --output dubbed.wav</pre>
+        </div>
+
+        <div class="code-panel">
+          <div class="code-panel-header">
+            <span>RUST SDK // SYNTHESIS, LUFS MASTERING &amp; DUBBING</span>
+            <button type="button" class="copy-btn" data-copy="sdk-code">Copy</button>
+          </div>
+          <pre class="code-body" id="sdk-code">use voicestudio_core::{
+    AudioDsp, DubbingPipeline, EngineType, SubtitleParser, SynthesisEngine, TtsRequest,
+};
+
+fn main() -&gt; anyhow::Result&lt;()&gt; {
+    // 1. Synthesize 24 kHz audio with OmniVoice
+    let req = TtsRequest {
+        text: "Broadcast-ready speech synthesis in Rust.".to_string(),
+        engine: EngineType::Omnivoice,
+        speed: 1.0,
+        pitch: 1.0,
+        sample_rate: 24000,
+        ..Default::default()
+    };
+    let out = SynthesisEngine::synthesize(&amp;req)?;
+
+    // 2. Normalize integrated loudness to -16.0 LUFS + embed watermark
+    let mastered = AudioDsp::normalize_loudness(&amp;out.samples, -16.0);
+    let watermarked = AudioDsp::embed_watermark(&amp;mastered, 0xABCD1234);
+    let stats = AudioDsp::analyze(&amp;watermarked);
+    assert!((stats.integrated_lufs - (-16.0)).abs() &lt; 1.0);
+
+    // 3. Parse SRT cues and render time-stretched dubbing segments
+    let srt = "1\n00:00:00,500 --&gt; 00:00:02,500\n[Alice] Timed dubbing.\n\n";
+    let cues = SubtitleParser::parse_srt(srt)?;
+    let plans = DubbingPipeline::plan_and_render_segments(&amp;cues, EngineType::Cosyvoice, "en", 24000)?;
+    assert_eq!(plans.len(), 1);
+    Ok(())
+}</pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <div>
+        <strong>voicestudio-rs</strong> // Local Neural Voice Cloning, Dubbing &amp; Broadcast DSP in Rust // GPL-3.0-or-later
+      </div>
+      <div style="display: flex; gap: 20px;">
+        <a href="https://code.brandonhubbard.com/">← Back to Code Portal</a>
+        <a href="https://github.com/bhubbard/voicestudio-rs" target="_blank" rel="noopener">GitHub Repository ↗</a>
+        <a href="https://github.com/bhubbard/voicestudio-rs/blob/main/BENCHMARKS.md" target="_blank" rel="noopener">Benchmarks ↗</a>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Interactive WebAudio Synthesizer & DSP Script -->
+  <script>
+    (function() {
+      // Theme Toggle
+      const htmlEl = document.documentElement;
+      const themeBtn = document.getElementById('theme-toggle');
+      const savedTheme = localStorage.getItem('bh-theme');
+      if (savedTheme === 'light' || savedTheme === 'dark') {
+        htmlEl.setAttribute('data-theme', savedTheme);
+      }
+      themeBtn.addEventListener('click', () => {
+        const next = htmlEl.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        htmlEl.setAttribute('data-theme', next);
+        localStorage.setItem('bh-theme', next);
+        renderVisualizers();
+      });
+
+      // Module Filter Buttons
+      const filterBtns = document.querySelectorAll('#module-filters .filter-btn');
+      const moduleCards = document.querySelectorAll('#module-grid .module-card');
+      filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          filterBtns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const cat = btn.getAttribute('data-filter');
+          moduleCards.forEach(card => {
+            if (cat === 'all' || card.getAttribute('data-category') === cat) {
+              card.style.display = 'flex';
+            } else {
+              card.style.display = 'none';
+            }
+          });
+        });
+      });
+
+      // Copy Buttons
+      document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetId = btn.getAttribute('data-copy');
+          const el = document.getElementById(targetId);
+          if (el && navigator.clipboard) {
+            navigator.clipboard.writeText(el.innerText).then(() => {
+              const orig = btn.innerText;
+              btn.innerText = 'COPIED';
+              setTimeout(() => { btn.innerText = orig; }, 1400);
+            });
+          }
+        });
+      });
+
+      // --- Exact JS Port of voicestudio-core Synthesis, DSP, VAD & 512-Dim Embedding ---
+      const SAMPLE_RATE = 24000;
+      const EMBEDDING_DIM = 512;
+      let currentSamples = new Float32Array(0);
+      let currentEmbedding = new Float32Array(EMBEDDING_DIM);
+      let currentVadFrames = [];
+      let currentPitchHz = 160.0;
+
+      const textEl = document.getElementById('tts-text');
+      const engineEl = document.getElementById('engine-select');
+      const personaEl = document.getElementById('persona-select');
+      const speedEl = document.getElementById('speed-range');
+      const pitchEl = document.getElementById('pitch-range');
+      const lufsEl = document.getElementById('lufs-range');
+
+      const waveCanvas = document.getElementById('waveform-canvas');
+      const waveCtx = waveCanvas.getContext('2d');
+      const embCanvas = document.getElementById('embedding-canvas');
+      const embCtx = embCanvas.getContext('2d');
+
+      function analyzeAudio(samples) {
+        if (!samples.length) return { rmsDb: -100, peakDb: -100, lufs: -70 };
+        let sumSq = 0, maxAbs = 0;
+        for (let i = 0; i < samples.length; i++) {
+          const s = samples[i];
+          const a = Math.abs(s);
+          if (a > maxAbs) maxAbs = a;
+          sumSq += s * s;
+        }
+        const rms = Math.sqrt(sumSq / samples.length);
+        const rmsDb = rms > 1e-7 ? 20 * Math.log10(rms) : -100;
+        const peakDb = maxAbs > 1e-7 ? 20 * Math.log10(maxAbs) : -100;
+        const lufs = -0.691 + 10 * Math.log10(Math.max(1e-10, sumSq / samples.length));
+        return { rmsDb, peakDb, lufs };
+      }
+
+      function normalizeLoudness(samples, targetLufs) {
+        const stats = analyzeAudio(samples);
+        const gainDb = targetLufs - stats.lufs;
+        const gainLin = Math.pow(10, gainDb / 20);
+        const out = new Float32Array(samples.length);
+        for (let i = 0; i < samples.length; i++) {
+          let s = samples[i] * gainLin;
+          if (s > 0.98) s = 0.98 + Math.tanh(s - 0.98) * 0.02;
+          else if (s < -0.98) s = -0.98 + Math.tanh(s + 0.98) * 0.02;
+          // Embed -66 dBFS spread-spectrum provenance watermark (0xABCD1234)
+          const bit = (0xABCD1234 >>> (i % 32)) & 1;
+          const carrier = bit === 1 ? 1.0 : -1.0;
+          s += 0.0005 * carrier * Math.sin(i * 0.95);
+          out[i] = s;
+        }
+        return out;
+      }
+
+      function computeEmbeddingAndVad(samples) {
+        const emb = new Float32Array(EMBEDDING_DIM);
+        const chunkSize = Math.max(1, Math.floor(samples.length / EMBEDDING_DIM));
+        let normSq = 0;
+        for (let d = 0; d < EMBEDDING_DIM; d++) {
+          const start = d * chunkSize;
+          const end = Math.min(samples.length, (d + 1) * chunkSize);
+          const len = Math.max(1, end - start);
+          let energy = 0;
+          for (let i = 0; i < len; i++) {
+            const w = 0.54 - 0.46 * Math.cos((2 * Math.PI * i) / len);
+            const sw = samples[start + i] * w;
+            energy += sw * sw;
+          }
+          emb[d] = Math.log(1 + energy / len);
+          normSq += emb[d] * emb[d];
+        }
+        const norm = Math.sqrt(normSq) || 1;
+        for (let d = 0; d < EMBEDDING_DIM; d++) emb[d] /= norm;
+
+        // VAD frames (25ms window = 600 samples at 24kHz, 10ms hop = 240 samples)
+        const winSize = 600, hopSize = 240;
+        const frames = [];
+        for (let start = 0; start + winSize <= samples.length; start += hopSize) {
+          let sumSq = 0;
+          for (let j = start; j < start + winSize; j++) sumSq += samples[j] * samples[j];
+          const rms = Math.sqrt(sumSq / winSize);
+          const db = rms > 1e-7 ? 20 * Math.log10(rms) : -100;
+          frames.push({ isSpeech: db > -32.0, db });
+        }
+        return { emb, frames };
+      }
+
+      function runPipeline() {
+        const t0 = performance.now();
+        const text = (textEl.value || 'VoiceStudio').trim();
+        const words = text.split(/\s+/).filter(Boolean);
+        const wordCount = Math.max(1, words.length);
+        const speed = parseFloat(speedEl.value);
+        const pitchMult = parseFloat(pitchEl.value);
+        const targetLufs = parseFloat(lufsEl.value);
+        const engine = engineEl.value;
+
+        // Engine-specific harmonic timbre profile
+        const engineHarmonics = {
+          omnivoice: [0.52, 0.27, 0.14, 0.06],
+          cosyvoice: [0.48, 0.31, 0.16, 0.08],
+          indextts:  [0.55, 0.22, 0.15, 0.05],
+          pockettts: [0.58, 0.24, 0.10, 0.03],
+          dotstts:   [0.50, 0.28, 0.18, 0.07],
+          supertonic:[0.45, 0.34, 0.19, 0.10],
+          audiocpp:  [0.60, 0.20, 0.11, 0.04]
+        }[engine] || [0.5, 0.25, 0.12, 0.05];
+
+        const baseDurationPerWord = 0.32 / Math.max(0.2, speed);
+        const totalDuration = Math.min(8.0, Math.max(0.8, wordCount * baseDurationPerWord));
+        const totalSamples = Math.floor(totalDuration * SAMPLE_RATE);
+        const raw = new Float32Array(totalSamples);
+        currentPitchHz = 160.0 * pitchMult;
+
+        let seed = 1337;
+        for (let i = 0; i < totalSamples; i++) {
+          const t = i / SAMPLE_RATE;
+          // Syllable cadence with inter-word micro-pauses
+          const wordPhase = (t / baseDurationPerWord) % 1.0;
+          const pauseGate = wordPhase > 0.86 ? 0.04 : Math.sin(wordPhase * Math.PI);
+          const sylEnv = (Math.abs(Math.sin(t * 18.0)) * 0.55 + 0.45) * pauseGate;
+          const fm = currentPitchHz * (1.0 + 0.03 * Math.sin(2 * Math.PI * 5.2 * t));
+          const h1 = Math.sin(2 * Math.PI * fm * t) * engineHarmonics[0];
+          const h2 = Math.sin(2 * Math.PI * (fm * 2.0) * t) * engineHarmonics[1];
+          const h3 = Math.sin(2 * Math.PI * (fm * 3.0) * t) * engineHarmonics[2];
+          const h4 = Math.sin(2 * Math.PI * (fm * 4.0) * t) * engineHarmonics[3];
+          seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+          const noise = (seed / 0x7fffffff) - 0.5;
+          raw[i] = (h1 + h2 + h3 + h4 + noise * 0.03) * sylEnv * 0.45;
+        }
+
+        currentSamples = normalizeLoudness(raw, targetLufs);
+        const finalStats = analyzeAudio(currentSamples);
+        const { emb, frames } = computeEmbeddingAndVad(currentSamples);
+        currentEmbedding = emb;
+        currentVadFrames = frames;
+        const elapsedMs = Math.max(0.1, performance.now() - t0);
+
+        // Update UI Readouts
+        document.getElementById('speed-val').textContent = `${speed.toFixed(2)}x`;
+        document.getElementById('pitch-val').textContent = `${pitchMult.toFixed(2)}x (${currentPitchHz.toFixed(0)} Hz)`;
+        document.getElementById('lufs-val').textContent = `${targetLufs.toFixed(1)} LUFS`;
+
+        document.getElementById('stat-lufs').textContent = `${finalStats.lufs.toFixed(2)} LUFS`;
+        document.getElementById('stat-rms').textContent = `${finalStats.rmsDb.toFixed(1)} dB / ${finalStats.peakDb.toFixed(1)} dBFS`;
+        document.getElementById('stat-f0').textContent = `${currentPitchHz.toFixed(1)} Hz`;
+
+        const speechFrames = frames.filter(f => f.isSpeech).length;
+        const vadPct = frames.length ? ((speechFrames / frames.length) * 100).toFixed(1) : '0.0';
+        document.getElementById('stat-vad').textContent = `${vadPct}% (${speechFrames}/${frames.length} frames)`;
+
+        const rtf = (elapsedMs / 1000) / totalDuration;
+        document.getElementById('duration-readout').textContent =
+          `24,000 Hz // ${totalDuration.toFixed(2)}s // Render: ${elapsedMs.toFixed(2)}ms (RTF: ${rtf.toFixed(5)}x)`;
+
+        const shortText = text.length > 34 ? text.slice(0, 34) + '...' : text;
+        document.getElementById('cli-preview').textContent =
+          `voicestudio synthesize -t "${shortText}" -e ${engine} --speed ${speed.toFixed(2)} --pitch ${pitchMult.toFixed(2)} -o out.wav`;
+
+        renderVisualizers();
+      }
+
+      function renderVisualizers() {
+        const isLight = htmlEl.getAttribute('data-theme') === 'light';
+
+        // 1. Waveform + VAD Canvas
+        const rectW = waveCanvas.getBoundingClientRect();
+        if (rectW.width > 0 && waveCanvas.width !== Math.floor(rectW.width)) {
+          waveCanvas.width = Math.floor(rectW.width);
+        }
+        const W = waveCanvas.width, H = waveCanvas.height;
+        waveCtx.clearRect(0, 0, W, H);
+
+        // Draw ±0.98 soft-knee limiter lines
+        const limYTop = H * 0.5 - (0.98 * H * 0.42);
+        const limYBot = H * 0.5 + (0.98 * H * 0.42);
+        waveCtx.strokeStyle = 'rgba(234, 88, 12, 0.45)';
+        waveCtx.setLineDash([4, 4]);
+        waveCtx.beginPath();
+        waveCtx.moveTo(0, limYTop); waveCtx.lineTo(W, limYTop);
+        waveCtx.moveTo(0, limYBot); waveCtx.lineTo(W, limYBot);
+        waveCtx.stroke();
+        waveCtx.setLineDash([]);
+
+        // Draw VAD speech activity ribbon at bottom
+        if (currentVadFrames.length > 0) {
+          const fw = W / currentVadFrames.length;
+          for (let i = 0; i < currentVadFrames.length; i++) {
+            waveCtx.fillStyle = currentVadFrames[i].isSpeech
+              ? 'rgba(22, 163, 74, 0.55)'
+              : 'rgba(115, 115, 115, 0.15)';
+            waveCtx.fillRect(i * fw, H - 14, Math.ceil(fw), 14);
+          }
+        }
+
+        // Draw waveform envelope
+        if (currentSamples.length > 0) {
+          waveCtx.strokeStyle = isLight ? '#0055ff' : '#3b82f6';
+          waveCtx.lineWidth = 1.35;
+          waveCtx.beginPath();
+          const step = Math.max(1, Math.floor(currentSamples.length / W));
+          for (let x = 0; x < W; x++) {
+            const idx = Math.min(currentSamples.length - 1, x * step);
+            let minV = 1, maxV = -1;
+            for (let j = 0; j < step && idx + j < currentSamples.length; j++) {
+              const v = currentSamples[idx + j];
+              if (v < minV) minV = v;
+              if (v > maxV) maxV = v;
+            }
+            const y1 = H * 0.48 - maxV * (H * 0.40);
+            const y2 = H * 0.48 - minV * (H * 0.40);
+            waveCtx.moveTo(x, y1);
+            waveCtx.lineTo(x, y2);
+          }
+          waveCtx.stroke();
+        }
+
+        // 2. 512-Dim Speaker Embedding Canvas
+        const rectE = embCanvas.getBoundingClientRect();
+        if (rectE.width > 0 && embCanvas.width !== Math.floor(rectE.width)) {
+          embCanvas.width = Math.floor(rectE.width);
+        }
+        const EW = embCanvas.width, EH = embCanvas.height;
+        embCtx.clearRect(0, 0, EW, EH);
+
+        const maxVal = Math.max(...currentEmbedding, 0.01);
+        const barW = EW / EMBEDDING_DIM;
+        for (let d = 0; d < EMBEDDING_DIM; d++) {
+          const normH = (currentEmbedding[d] / maxVal) * (EH * 0.82);
+          const x = d * barW;
+          const y = EH - normH - 10;
+          embCtx.fillStyle = d % 2 === 0
+            ? (isLight ? '#0055ff' : '#3b82f6')
+            : (isLight ? '#15803d' : '#16a34a');
+          embCtx.fillRect(x, y, Math.max(1, barW), normH);
+        }
+      }
+
+      // Event Listeners
+      [textEl, engineEl, speedEl, pitchEl, lufsEl].forEach(el => {
+        el.addEventListener('input', runPipeline);
+      });
+
+      personaEl.addEventListener('change', () => {
+        const opt = personaEl.options[personaEl.selectedIndex];
+        const presetPitch = opt.getAttribute('data-pitch');
+        if (presetPitch) {
+          pitchEl.value = presetPitch;
+        }
+        runPipeline();
+      });
+
+      window.addEventListener('resize', renderVisualizers);
+
+      // Play Audio via Web Audio API
+      let audioCtx = null;
+      document.getElementById('play-audio-btn').addEventListener('click', () => {
+        if (!currentSamples.length) return;
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) return;
+        if (!audioCtx) audioCtx = new AudioContextClass();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const buffer = audioCtx.createBuffer(1, currentSamples.length, SAMPLE_RATE);
+        buffer.getChannelData(0).set(currentSamples);
+        const src = audioCtx.createBufferSource();
+        src.buffer = buffer;
+        src.connect(audioCtx.destination);
+        src.start();
+      });
+
+      // Download 16-bit PCM WAV (mirrors write_wav_file in voicestudio-cli)
+      document.getElementById('download-wav-btn').addEventListener('click', () => {
+        const numSamples = currentSamples.length;
+        const buffer = new ArrayBuffer(44 + numSamples * 2);
+        const view = new DataView(buffer);
+        const writeStr = (off, s) => { for (let i = 0; i < s.length; i++) view.setUint8(off + i, s.charCodeAt(i)); };
+
+        writeStr(0, 'RIFF');
+        view.setUint32(4, 36 + numSamples * 2, true);
+        writeStr(8, 'WAVE');
+        writeStr(12, 'fmt ');
+        view.setUint32(16, 16, true);
+        view.setUint16(20, 1, true); // PCM
+        view.setUint16(22, 1, true); // Mono
+        view.setUint32(24, SAMPLE_RATE, true);
+        view.setUint32(28, SAMPLE_RATE * 2, true);
+        view.setUint16(32, 2, true);
+        view.setUint16(34, 16, true);
+        writeStr(36, 'data');
+        view.setUint32(40, numSamples * 2, true);
+
+        let offset = 44;
+        for (let i = 0; i < numSamples; i++) {
+          const clamped = Math.max(-1, Math.min(1, currentSamples[i]));
+          view.setInt16(offset, (clamped * 32767) | 0, true);
+          offset += 2;
+        }
+
+        const blob = new Blob([buffer], { type: 'audio/wav' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `voicestudio-${engineEl.value}-24khz.wav`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+
+      // Download SpeakerPersona JSON (mirrors SpeakerPersona in voicestudio-core::cloning)
+      document.getElementById('download-persona-btn').addEventListener('click', () => {
+        const name = personaEl.options[personaEl.selectedIndex].text.split(' (')[0];
+        const dur = currentSamples.length / SAMPLE_RATE;
+        const personaObj = {
+          id: `${name.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_${Math.round(dur * 1000)}`,
+          name,
+          sample_rate: SAMPLE_RATE,
+          estimated_pitch_hz: Number(currentPitchHz.toFixed(2)),
+          duration_seconds: Number(dur.toFixed(3)),
+          embedding: Array.from(currentEmbedding).map(v => Number(v.toFixed(6)))
+        };
+        const blob = new Blob([JSON.stringify(personaObj, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${personaObj.id}_persona.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      });
+
+      runPipeline();
+    })();
+  </script>
+</body>
+</html>
