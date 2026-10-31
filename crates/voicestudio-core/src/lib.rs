@@ -10,6 +10,7 @@ pub mod config;
 pub mod dsp;
 pub mod dubbing;
 pub mod engine;
+pub mod roadmap_audio;
 pub mod subtitles;
 
 pub use asr::{AsrFrame, AsrProcessor, ASR_SAMPLE_RATE};
@@ -18,4 +19,8 @@ pub use config::VoiceStudioConfig;
 pub use dsp::{AudioDsp, AudioQualityStats};
 pub use dubbing::{DubbingPipeline, DubbingResult, DubbingSegmentPlan};
 pub use engine::{EngineType, SynthesisEngine, TtsOutput, TtsRequest};
+pub use roadmap_audio::{
+    AdmObject, AdmSpatialRenderer, AlignedWord, AudioWaveformPeaks, DemucsSeparator, DemucsStems,
+    TtalCue, TtalDocument, WhisperXAligner,
+};
 pub use subtitles::{SubtitleCue, SubtitleParser};
